@@ -1,10 +1,6 @@
 # bootstrap.ps1
 Write-Host "=== Starting VM Setup Bootstrap ==="
 
-# Install 7zip first for NVIDIA driver extraction
-Write-Host "Installing 7-Zip..." -ForegroundColor Cyan
-winget install --id 7zip.7zip -e --source winget --accept-package-agreements --accept-source-agreements --silent
-
 # Collect all info once
 $env:TAILSCALE_KEY = Read-Host "Enter your Tailscale Auth Key (kept secret)"
 $hostname = Read-Host "Enter hostname for this VM (used for Tailscale)"
@@ -12,6 +8,10 @@ $env:SUNSHINE_PASSWORD = "sunshine"
 
 # Set hostname
 Rename-Computer -NewName $hostname -Force -PassThru
+
+# Install 7zip first for NVIDIA driver extraction
+Write-Host "Installing 7-Zip..." -ForegroundColor Cyan
+winget install --id 7zip.7zip -e --source winget --accept-package-agreements --accept-source-agreements --silent
 
 # Prepare temp folder
 $tempDir = "$env:TEMP\vm-setup"
