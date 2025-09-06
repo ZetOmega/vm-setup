@@ -4,13 +4,6 @@ param (
     [string]$folder = "$env:temp"
 )
 
-# Use 7zip that we installed in bootstrap
-$archiverProgram = "C:\Program Files\7-Zip\7z.exe"
-if (-not (Test-Path $archiverProgram)) {
-    Write-Error "7-Zip not found at: $archiverProgram. Please install 7-Zip first."
-    exit 1
-}
-
 # Checking currently installed driver version
 Write-Host "Attempting to detect currently installed driver version..."
 try {
@@ -93,14 +86,11 @@ catch {
     }
 }
 
-# Extracting
+# Extracting using NVIDIA's native /extract (fixes non-7z error)
 $extractFolder = "$nvidiaTempFolder\$version"
-$filesToExtract = "Display.Driver HDAudio NVI2 PhysX EULA.txt ListDevices.txt setup.cfg setup.exe"
 Write-Host "Extracting files..."
-
 try {
-    $arguments = @("x", "-bso0", "-bsp1", "-bse1", "-aoa", "`"$dlFile`"", "`"$filesToExtract`"", "-o`"$extractFolder`"")
-    Start-Process -FilePath $archiverProgram -ArgumentList $arguments -Wait -NoNewWindow
+    Start-Process -FilePath $dlFile -ArgumentList "/extract:$extractFolder /quiet" -Wait
     Write-Host "Extraction completed successfully" -ForegroundColor Green
 }
 catch {
@@ -118,11 +108,11 @@ if (Test-Path "$extractFolder\setup.cfg") {
     }
 }
 
-# Installing drivers
+# Installing drivers with GUI progress (prevents hanging)
 Write-Host "Installing Nvidia drivers now..."
-$install_args = "-passive -noreboot -noeula -nofinish -s"
+$install_args = "-s" # GUI visible progress
 if ($clean) {
-    $install_args = $install_args + " -clean"
+    $install_args += " -clean"
 }
 
 if (Test-Path "$extractFolder\setup.exe") {
