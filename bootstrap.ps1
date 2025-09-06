@@ -1,15 +1,44 @@
 # bootstrap.ps1
-$repoZip = "https://github.com/<YOUR-USER>/gaming-vm-setup/archive/refs/heads/main.zip"
-$dest = "$env:TEMP\repo.zip"
-$outDir = "$env:TEMP\my-setup"
+# This script downloads your vm-setup repo and runs setup.ps1
 
-Write-Host "Downloading setup repository..."
-Invoke-WebRequest -Uri $repoZip -OutFile $dest
+# -----------------------------
+# Setup Logging
+# -----------------------------
+$logFile = "$env:USERPROFILE\Downloads\vm_bootstrap_log.txt"
+Start-Transcript -Path $logFile -Append
 
-Write-Host "Extracting repository..."
-Expand-Archive $dest -DestinationPath $outDir -Force
-Remove-Item $dest
+# Ensure running as admin
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Start-Process powershell "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
+}
 
-Write-Host "Running setup script..."
-$setup = Get-ChildItem -Path $outDir -Recurse -Filter "setup.ps1" | Select-Object -First 1
-& powershell -ExecutionPolicy Bypass -File $setup.FullName
+Write-Host "=== Starting VM Setup Bootstrap ==="
+
+# Prompt for sensitive info
+$tailscaleKey = Read-Host -Prompt "Enter your Tailscale Auth Key (kept secret)"
+$hostname = Read-Host -Prompt "Enter hostname for this VM (used for Tailscale)"
+
+# -----------------------------
+# Download vm-setup repo
+# -----------------------------
+$tempDir = "$env:TEMP\vm-setup"
+if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
+Write-Host "Downloading vm-setup repo..."
+git clone https://github.com/ZetOmega/vm-setup.git $tempDir
+
+# -----------------------------
+# Run setup.ps1
+# -----------------------------
+$setupScript = Join-Path $tempDir "setup.ps1"
+
+# Pass Tailscale info via environment variables so setup.ps1 can use them
+$env:TAILSCALE_KEY = $tailscaleKey
+$env:VM_HOSTNAME = $hostname
+
+Write-Host "Running setup.ps1 from vm-setup..."
+Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$setupScript`"" -Wait
+
+Write-Host "=== Bootstrap Complete ==="
+Stop-Transcript
