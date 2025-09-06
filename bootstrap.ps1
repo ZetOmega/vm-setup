@@ -2,32 +2,22 @@
 $logFile = "$env:USERPROFILE\Downloads\vm_bootstrap_log.txt"
 Start-Transcript -Path $logFile -Append
 
-# Admin check
-if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-    [Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Start-Process powershell "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
-}
+Write-Host "=== VM Setup Bootstrap ==="
 
-Write-Host "=== Starting VM Setup Bootstrap ==="
+# Ask for sensitive info once
+$env:TAILSCALE_KEY = Read-Host "Enter your Tailscale Auth Key (kept secret)"
+$env:VM_HOSTNAME = Read-Host "Enter hostname for this VM (used for Tailscale)"
 
-# Prompt once for sensitive info
-$env:TAILSCALE_KEY = Read-Host -Prompt "Enter your Tailscale Auth Key (kept secret)"
-$env:VM_HOSTNAME = Read-Host -Prompt "Enter hostname for this VM (used for Tailscale)"
-
-# Download vm-setup repo ZIP
-$tempZip = "$env:TEMP\vm-setup.zip"
+# Ensure temp folder exists
 $tempDir = "$env:TEMP\vm-setup"
-if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
+if (-not (Test-Path $tempDir)) { New-Item -ItemType Directory -Path $tempDir }
 
-Write-Host "Downloading vm-setup repo..."
-Invoke-WebRequest "https://github.com/ZetOmega/vm-setup/archive/refs/heads/main.zip" -OutFile $tempZip
-Expand-Archive $tempZip -DestinationPath $tempDir -Force
+# Download setup.ps1 if missing
+$setupScript = Join-Path $tempDir "setup.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/ZetOmega/vm-setup/main/setup.ps1" -OutFile $setupScript
 
 # Run setup.ps1
-$setupScript = Join-Path $tempDir "vm-setup-main\setup.ps1"
-Write-Host "Running setup.ps1 from vm-setup..."
-Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$setupScript`"" -Wait
+Write-Host "Running setup..."
+& $setupScript
 
-Write-Host "=== Bootstrap Complete ==="
 Stop-Transcript
