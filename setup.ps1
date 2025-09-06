@@ -125,7 +125,7 @@ try {
     Write-Warning "Tailscale installation failed: $($_.Exception.Message)"
 }
 
-# 7. Install VDD Automatically and Copy Configuration
+# 7. Install VDD with Manual Completion
 Write-Host "[7/6] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
 $vddInstaller = "$env:TEMP\Virtual.Display.Driver-v24.12.24-setup-x64.exe"
 
@@ -135,18 +135,24 @@ try {
     Invoke-WebRequest "https://github.com/ULTRA-VAGREE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe" -OutFile $vddInstaller -ErrorAction Stop
     
     if (Test-Path $vddInstaller) {
-        Write-Host "Installing VDD silently..." -ForegroundColor Yellow
+        Write-Host "Opening VDD installer for manual installation..." -ForegroundColor Yellow
+        Write-Host "Please complete the VDD installation manually in the opened window" -ForegroundColor Yellow
+        Write-Host "After installation is complete, return here and press Enter" -ForegroundColor Yellow
         
-        # Run silent installation
-        Start-Process -FilePath $vddInstaller -ArgumentList "/S" -Wait
-        Write-Host "VDD installed successfully" -ForegroundColor Green
+        # Open the installer
+        $installProcess = Start-Process -FilePath $vddInstaller -PassThru
+        
+        # Wait for user confirmation after manual installation
+        Read-Host "Press Enter after you have completed the VDD installation"
+        
+        Write-Host "VDD installation completed manually" -ForegroundColor Green
     }
 } catch {
-    Write-Warning "VDD automated installation failed: $($_.Exception.Message)"
-    Write-Host "Please install VDD manually if needed" -ForegroundColor Yellow
+    Write-Warning "VDD download failed: $($_.Exception.Message)"
+    Write-Host "Please download and install VDD manually from: https://github.com/ULTRA-VAGREE/Virtual-Display-Driver-Compatibility-Fork/releases" -ForegroundColor Yellow
 }
 
-# Copy VDD configuration (just copy, no stopping/restarting)
+# Copy VDD configuration after manual installation
 Write-Host "Copying VDD configuration..." -ForegroundColor Cyan
 $vddCfg = Join-Path $PSScriptRoot "vdd_settings.xml"
 $vddDestDir = "C:\VirtualDisplayDriver"
@@ -161,15 +167,46 @@ if (Test-Path $vddCfg) {
     # Copy the configuration file
     Copy-Item $vddCfg -Destination $vddDest -Force
     Write-Host "VDD settings copied to: $vddDest" -ForegroundColor Green
+    
+    # Verify the copy was successful
+    if (Test-Path $vddDest) {
+        Write-Host "VDD configuration verified successfully" -ForegroundColor Green
+    } else {
+        Write-Warning "VDD configuration copy may have failed"
+    }
 } else {
     Write-Warning "VDD settings file not found at: $vddCfg"
     Write-Host "Please ensure vdd_settings.xml exists in the repository root" -ForegroundColor Yellow
+    
+    # Check common alternative locations
+    $alternativePaths = @(
+        Join-Path $PSScriptRoot "configs\vdd_settings.xml",
+        Join-Path $PSScriptRoot "..\vdd_settings.xml",
+        Join-Path $PSScriptRoot "vdd-settings.xml"
+    )
+    
+    foreach ($altPath in $alternativePaths) {
+        if (Test-Path $altPath) {
+            Write-Host "Found VDD settings at alternative location: $altPath" -ForegroundColor Yellow
+            if (-not (Test-Path $vddDestDir)) {
+                New-Item -ItemType Directory -Path $vddDestDir -Force
+            }
+            Copy-Item $altPath -Destination $vddDest -Force
+            Write-Host "VDD settings copied from alternative location" -ForegroundColor Green
+            break
+        }
+    }
 }
 
 # Clean up installer
 if (Test-Path $vddInstaller) {
     Remove-Item $vddInstaller -Force -ErrorAction SilentlyContinue
+    Write-Host "Installer cleaned up" -ForegroundColor Green
 }
+
+# Final confirmation
+Write-Host "VDD setup completed!" -ForegroundColor Green
+Write-Host "Configuration file: C:\VirtualDisplayDriver\vdd_settings.xml" -ForegroundColor Cyan
 
 # 8. NVIDIA drivers
 Write-Host "Installing NVIDIA drivers..." -ForegroundColor Cyan
