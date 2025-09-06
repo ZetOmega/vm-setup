@@ -1,5 +1,5 @@
 # bootstrap.ps1
-# This script downloads your vm-setup repo and runs setup.ps1
+# This version works on a plain Windows install (no git required)
 
 # -----------------------------
 # Setup Logging
@@ -21,23 +21,26 @@ $tailscaleKey = Read-Host -Prompt "Enter your Tailscale Auth Key (kept secret)"
 $hostname = Read-Host -Prompt "Enter hostname for this VM (used for Tailscale)"
 
 # -----------------------------
-# Download vm-setup repo
+# Download vm-setup repo as ZIP
 # -----------------------------
+$tempZip = "$env:TEMP\vm-setup.zip"
 $tempDir = "$env:TEMP\vm-setup"
 if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
+
 Write-Host "Downloading vm-setup repo..."
-git clone https://github.com/ZetOmega/vm-setup.git $tempDir
+Invoke-WebRequest "https://github.com/ZetOmega/vm-setup/archive/refs/heads/main.zip" -OutFile $tempZip
+Expand-Archive $tempZip -DestinationPath $tempDir
 
 # -----------------------------
 # Run setup.ps1
 # -----------------------------
-$setupScript = Join-Path $tempDir "setup.ps1"
+$setupScript = Join-Path $tempDir "vm-setup-main\bootstrap.ps1"
 
-# Pass Tailscale info via environment variables so setup.ps1 can use them
+# Pass Tailscale info via environment variables
 $env:TAILSCALE_KEY = $tailscaleKey
 $env:VM_HOSTNAME = $hostname
 
-Write-Host "Running setup.ps1 from vm-setup..."
+Write-Host "Running bootstrap.ps1 from vm-setup..."
 Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$setupScript`"" -Wait
 
 Write-Host "=== Bootstrap Complete ==="
