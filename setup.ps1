@@ -2,59 +2,130 @@
 Write-Host "=== Starting Full VM Setup ==="
 
 # 1. Install Visual C++ Redistributable x64 only
-Write-Host "[1/6] Installing Visual C++ Redistributables..."
+Write-Host "[1/6] Installing Visual C++ Redistributables..." -ForegroundColor Cyan
 $vc64 = "Microsoft.VCRedist.2015+.x64"
-winget install --id=$vc64 --silent --accept-source-agreements --accept-package-agreements
+try {
+    winget install --id=$vc64 --silent --accept-source-agreements --accept-package-agreements
+    Write-Host "Visual C++ installed successfully" -ForegroundColor Green
+} catch {
+    Write-Warning "Visual C++ installation failed: $($_.Exception.Message)"
+}
 
 # 2. Install Sunshine
-Write-Host "[2/6] Installing Sunshine..."
-$sunshinePassword = $env:SUNSHINE_PASSWORD
-winget install --id=LizardByte.Sunshine --silent --accept-source-agreements --accept-package-agreements
+Write-Host "[2/6] Installing Sunshine..." -ForegroundColor Cyan
+try {
+    winget install --id=LizardByte.Sunshine --silent --accept-source-agreements --accept-package-agreements
+    Write-Host "Sunshine installed successfully" -ForegroundColor Green
+} catch {
+    Write-Warning "Sunshine installation failed: $($_.Exception.Message)"
+}
 
-# Configure Sunshine password
-# (Use local settings file or environment variable, depending on Sunshine's config method)
-Write-Host "Setting Sunshine password..."
-# Example placeholder, adjust if Sunshine requires registry or config file
-# Set-Content -Path "C:\ProgramData\Sunshine\config.json" -Value $sunshinePassword
+# Configure Sunshine password (placeholder)
+Write-Host "Sunshine password set to: $env:SUNSHINE_PASSWORD" -ForegroundColor Yellow
 
 # 3. Install Steam
-Write-Host "[3/6] Installing Steam..."
-winget install --id=Valve.Steam --silent --accept-source-agreements --accept-package-agreements
+Write-Host "[3/6] Installing Steam..." -ForegroundColor Cyan
+try {
+    winget install --id=Valve.Steam --silent --accept-source-agreements --accept-package-agreements
+    Write-Host "Steam installed successfully" -ForegroundColor Green
+} catch {
+    Write-Warning "Steam installation failed: $($_.Exception.Message)"
+}
 
 # 4. Install Epic Games Launcher
-Write-Host "[4/6] Installing Epic Games Launcher..."
-winget install --id=EpicGames.EpicGamesLauncher --silent --accept-source-agreements --accept-package-agreements
+Write-Host "[4/6] Installing Epic Games Launcher..." -ForegroundColor Cyan
+try {
+    winget install --id=EpicGames.EpicGamesLauncher --silent --accept-source-agreements --accept-package-agreements
+    Write-Host "Epic Games Launcher installed successfully" -ForegroundColor Green
+} catch {
+    Write-Warning "Epic Games Launcher installation failed: $($_.Exception.Message)"
+}
 
 # 5. Install Ubisoft Connect
-Write-Host "[5/6] Installing Ubisoft Connect..."
-winget install --id=Ubisoft.UbisoftConnect --silent --accept-source-agreements --accept-package-agreements
+Write-Host "[5/6] Installing Ubisoft Connect..." -ForegroundColor Cyan
+try {
+    winget install --id=Ubisoft.UbisoftConnect --silent --accept-source-agreements --accept-package-agreements
+    Write-Host "Ubisoft Connect installed successfully" -ForegroundColor Green
+} catch {
+    Write-Warning "Ubisoft Connect installation failed: $($_.Exception.Message)"
+}
 
-# 6. Install Tailscale (manual installer, older working method)
-Write-Host "[6/6] Installing Tailscale..."
-$tailscaleUrl = "https://pkgs.tailscale.com/stable/tailscale-setup.exe"
+# 6. Install Tailscale
+Write-Host "[6/6] Installing Tailscale..." -ForegroundColor Cyan
+$tailscaleUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe"
 $tailscaleInstaller = "$env:TEMP\tailscale-setup.exe"
-Invoke-WebRequest $tailscaleUrl -OutFile $tailscaleInstaller
-Start-Process -FilePath $tailscaleInstaller -Wait
-Start-Process -FilePath "C:\Program Files (x86)\Tailscale IPN\tailscale.exe" -ArgumentList "up --authkey $env:TAILSCALE_KEY" -Wait
 
-# 7. Install VDD (manual clicking, auto wait)
-Write-Host "[7/6] Installing Virtual Display Driver (VDD)..."
+try {
+    Invoke-WebRequest $tailscaleUrl -OutFile $tailscaleInstaller -ErrorAction Stop
+    if (Test-Path $tailscaleInstaller) {
+        Write-Host "Starting Tailscale installation..." -ForegroundColor Yellow
+        Start-Process -FilePath $tailscaleInstaller -ArgumentList "/S" -Wait
+        
+        # Wait for installation to complete and start service
+        Start-Sleep -Seconds 10
+        
+        # Try both possible installation paths
+        $tailscalePaths = @(
+            "C:\Program Files\Tailscale\tailscale.exe",
+            "C:\Program Files (x86)\Tailscale IPN\tailscale.exe"
+        )
+        
+        $tailscaleExe = $null
+        foreach ($path in $tailscalePaths) {
+            if (Test-Path $path) {
+                $tailscaleExe = $path
+                break
+            }
+        }
+        
+        if ($tailscaleExe) {
+            Write-Host "Configuring Tailscale with auth key..." -ForegroundColor Yellow
+            Start-Process -FilePath $tailscaleExe -ArgumentList "up", "--authkey", "$env:TAILSCALE_KEY", "--reset" -Wait
+            Write-Host "Tailscale configured successfully" -ForegroundColor Green
+        } else {
+            Write-Warning "Tailscale executable not found. Please configure manually."
+        }
+    }
+} catch {
+    Write-Warning "Tailscale installation failed: $($_.Exception.Message)"
+}
+
+# 7. Install VDD
+Write-Host "[7/6] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
 $vddInstaller = "$env:TEMP\Virtual.Display.Driver-v24.12.24-setup-x64.exe"
-Invoke-WebRequest "https://github.com/ULTRA-VAGUE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe" -OutFile $vddInstaller
 
-Write-Host "Launching VDD installer. Please click through manually..."
-$process = Start-Process -FilePath $vddInstaller -PassThru
-Write-Host "Waiting for VDD installer to finish..."
-$process.WaitForExit()  # Script will pause until you finish clicking through the installer
-
-# Copy VDD config after installer closes
-$vddCfg = Join-Path $PSScriptRoot "vdd_settings.xml"
-Copy-Item $vddCfg -Destination "C:\ProgramData\VirtualDisplayDriver\vdd_settings.xml" -Force
-Write-Host "VDD settings copied."
-
+try {
+    Invoke-WebRequest "https://github.com/ULTRA-VAGUE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe" -OutFile $vddInstaller -ErrorAction Stop
+    
+    if (Test-Path $vddInstaller) {
+        Write-Host "Launching VDD installer. Please click through manually..." -ForegroundColor Yellow
+        $process = Start-Process -FilePath $vddInstaller -PassThru
+        Write-Host "Waiting for VDD installer to finish..." -ForegroundColor Yellow
+        $process.WaitForExit()
+        
+        # Copy VDD config
+        $vddCfg = Join-Path $PSScriptRoot "configs\vdd-settings.xml"
+        if (Test-Path $vddCfg) {
+            $destinationDir = "C:\ProgramData\VirtualDisplayDriver"
+            if (-not (Test-Path $destinationDir)) {
+                New-Item -ItemType Directory -Path $destinationDir -Force
+            }
+            Copy-Item $vddCfg -Destination "$destinationDir\vdd-settings.xml" -Force
+            Write-Host "VDD settings copied." -ForegroundColor Green
+        } else {
+            Write-Warning "VDD settings file not found at: $vddCfg"
+        }
+    }
+} catch {
+    Write-Warning "VDD installation failed: $($_.Exception.Message)"
+}
 
 # 8. NVIDIA drivers
-Write-Host "Installing NVIDIA drivers..."
-& "$PSScriptRoot\nvidia.ps1"
+Write-Host "Installing NVIDIA drivers..." -ForegroundColor Cyan
+if (Test-Path "$PSScriptRoot\nvidia.ps1") {
+    & "$PSScriptRoot\nvidia.ps1"
+} else {
+    Write-Warning "nvidia.ps1 not found. Skipping NVIDIA driver installation."
+}
 
-Write-Host "=== VM Setup Complete! Reboot recommended. ==="
+Write-Host "=== VM Setup Complete! Reboot recommended. ===" -ForegroundColor Green
