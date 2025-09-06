@@ -182,7 +182,7 @@ if (Test-Path $vddCfg) {
     $alternativePaths = @(
         Join-Path $PSScriptRoot "configs\vdd_settings.xml",
         Join-Path $PSScriptRoot "..\vdd_settings.xml",
-        Join-Path $PSScriptRoot "vdd-settings.xml"
+        Join-Path $PSScriptRoot "vdd_settings.xml"
     )
     
     foreach ($altPath in $alternativePaths) {
