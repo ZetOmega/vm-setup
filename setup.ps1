@@ -1,5 +1,11 @@
 # setup.ps1
 
+# -----------------------------
+# Setup Logging
+# -----------------------------
+$logFile = "$env:USERPROFILE\Downloads\vm_setup_log.txt"
+Start-Transcript -Path $logFile -Append
+
 # Ensure running as admin
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -23,6 +29,9 @@ $nvidiaScriptUrl = "https://raw.githubusercontent.com/lord-carlos/nvidia-update/
 $nvidiaScriptPath = "$env:TEMP\nvidia.ps1"
 Invoke-WebRequest -Uri $nvidiaScriptUrl -OutFile $nvidiaScriptPath
 
+# Disable reboot in NVIDIA script
+(Get-Content $nvidiaScriptPath) -replace 'Read-Host "Would you like to reboot now.*"', '$reboot = "N"' | Set-Content $nvidiaScriptPath
+
 # Run NVIDIA update script silently
 Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File $nvidiaScriptPath -clean" -Wait
 
@@ -44,24 +53,41 @@ $sunshineExe = "$env:TEMP\sunshine-setup.exe"
 Invoke-WebRequest -Uri $sunshineUrl -OutFile $sunshineExe
 Start-Process -FilePath $sunshineExe -ArgumentList "/S" -Wait
 
-# Copy Sunshine config
+# Download Sunshine config from GitHub
 $SunshineCfgDir = "C:\ProgramData\Sunshine\config"
 if (!(Test-Path $SunshineCfgDir)) { New-Item -Path $SunshineCfgDir -ItemType Directory -Force }
-Copy-Item ".\configs\sunshine.json" -Destination "$SunshineCfgDir\sunshine.json" -Force
+$sunshineCfgUrl = "https://raw.githubusercontent.com/ZetOmega/vm-setup/main/configs/sunshine.json"
+try {
+    Invoke-WebRequest -Uri $sunshineCfgUrl -OutFile "$SunshineCfgDir\sunshine.json" -ErrorAction Stop
+    Write-Host "Sunshine config downloaded."
+} catch {
+    Write-Host "Sunshine config not found on GitHub, skipping..."
+}
 
 # -----------------------------
 # 4️⃣ Install Virtual Display Driver
 # -----------------------------
 Write-Host "[4/7] Installing Virtual Display Driver v24.12.24..."
-$vddUrl = "https://github.com/ULTRA-VAGUE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/VirtualDisplayDriver_Setup.exe"
+$vddUrl = "https://github.com/ULTRA-VAGUE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe"
 $vddExe = "$env:TEMP\vdd_setup.exe"
-Invoke-WebRequest -Uri $vddUrl -OutFile $vddExe
-Start-Process -FilePath $vddExe -ArgumentList "/VERYSILENT","/NORESTART" -Wait
+try {
+    Invoke-WebRequest -Uri $vddUrl -OutFile $vddExe -ErrorAction Stop
+    Start-Process -FilePath $vddExe -ArgumentList "/VERYSILENT","/NORESTART" -Wait
+    Write-Host "VDD installed successfully."
+} catch {
+    Write-Host "Failed to download or install VDD, skipping..."
+}
 
-# Copy VDD settings
+# Download VDD config from GitHub
 $VddPath = "C:\ProgramData\VirtualDisplayDriver"
 if (!(Test-Path $VddPath)) { New-Item -Path $VddPath -ItemType Directory -Force }
-Copy-Item ".\configs\vdd_settings.xml" -Destination "$VddPath\vdd_settings.xml" -Force
+$vddCfgUrl = "https://raw.githubusercontent.com/ZetOmega/vm-setup/main/configs/vdd_settings.xml"
+try {
+    Invoke-WebRequest -Uri $vddCfgUrl -OutFile "$VddPath\vdd_settings.xml" -ErrorAction Stop
+    Write-Host "VDD config downloaded."
+} catch {
+    Write-Host "VDD config not found on GitHub, skipping..."
+}
 
 # -----------------------------
 # 5️⃣ Install Tailscale
@@ -101,3 +127,5 @@ Invoke-WebRequest -Uri $ubisoftUrl -OutFile $ubisoftExe
 Start-Process -FilePath $ubisoftExe -ArgumentList "/S" -Wait
 
 Write-Host "=== Full Setup Complete! Reboot recommended. ==="
+
+Stop-Transcript
