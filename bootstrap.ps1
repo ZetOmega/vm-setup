@@ -1,5 +1,5 @@
 # bootstrap.ps1
-# This version works on a plain Windows install (no git required)
+# Corrected: runs setup.ps1, not itself
 
 # -----------------------------
 # Setup Logging
@@ -29,18 +29,18 @@ if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
 
 Write-Host "Downloading vm-setup repo..."
 Invoke-WebRequest "https://github.com/ZetOmega/vm-setup/archive/refs/heads/main.zip" -OutFile $tempZip
-Expand-Archive $tempZip -DestinationPath $tempDir
+Expand-Archive $tempZip -DestinationPath $tempDir -Force
 
 # -----------------------------
 # Run setup.ps1
 # -----------------------------
-$setupScript = Join-Path $tempDir "vm-setup-main\bootstrap.ps1"
+$setupScript = Join-Path $tempDir "vm-setup-main\setup.ps1"
 
 # Pass Tailscale info via environment variables
 $env:TAILSCALE_KEY = $tailscaleKey
 $env:VM_HOSTNAME = $hostname
 
-Write-Host "Running bootstrap.ps1 from vm-setup..."
+Write-Host "Running setup.ps1 from vm-setup..."
 Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$setupScript`"" -Wait
 
 Write-Host "=== Bootstrap Complete ==="
