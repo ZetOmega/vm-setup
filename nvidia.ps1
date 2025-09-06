@@ -69,49 +69,19 @@ $url = "https://international.download.nvidia.com/Windows/$version/$version-desk
 $rp_url = "https://international.download.nvidia.com/Windows/$version/$version-desktop-$windowsVersion-$windowsArchitecture-international-dch-whql-rp.exe"
 
 # -----------------------------
-# Download with progress bar
+# Downloading driver (no progress)
 # -----------------------------
-function Download-FileWithProgress {
-    param (
-        [string]$url,
-        [string]$outFile
-    )
-    
-    $wc = New-Object System.Net.WebClient
-    $wc.Headers.Add("User-Agent", "Mozilla/5.0")
-
-    $wc.DownloadProgressChanged += {
-        Write-Progress -Activity "Downloading NVIDIA driver" `
-                       -Status "$($_.ProgressPercentage)% complete" `
-                       -PercentComplete $_.ProgressPercentage
-    }
-
-    $wc.DownloadFileCompleted += {
-        Write-Progress -Activity "Downloading NVIDIA driver" -Completed
-        Write-Host "Download completed successfully: $outFile" -ForegroundColor Green
-    }
-
-    try {
-        $wc.DownloadFileAsync([uri]$url, $outFile)
-
-        # Wait for download to finish
-        while ($wc.IsBusy) { Start-Sleep -Milliseconds 200 }
-    }
-    catch {
-        throw $_
-    }
-}
-
 $dlFile = "$nvidiaTempFolder\$version.exe"
 Write-Host "Downloading the latest version to $dlFile"
-
 try {
-    Download-FileWithProgress -url $url -outFile $dlFile
+    Invoke-WebRequest -Uri $url -OutFile $dlFile -ErrorAction Stop
+    Write-Host "Download completed successfully" -ForegroundColor Green
 }
 catch {
     Write-Host "Download failed, trying alternative RP package..." -ForegroundColor Yellow
     try {
-        Download-FileWithProgress -url $rp_url -outFile $dlFile
+        Invoke-WebRequest -Uri $rp_url -OutFile $dlFile -ErrorAction Stop
+        Write-Host "Download completed successfully" -ForegroundColor Green
     }
     catch {
         Write-Error "Both download attempts failed: $($_.Exception.Message)"
