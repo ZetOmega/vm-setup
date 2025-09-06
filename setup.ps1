@@ -125,49 +125,51 @@ try {
     Write-Warning "Tailscale installation failed: $($_.Exception.Message)"
 }
 
-# 7. Install VDD Automatically
-Write-Host "[7/6] Installing Virtual Display Driver (VDD) Automatically..." -ForegroundColor Cyan
+# 7. Install VDD Automatically and Copy Configuration
+Write-Host "[7/6] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
 $vddInstaller = "$env:TEMP\Virtual.Display.Driver-v24.12.24-setup-x64.exe"
+
 try {
-    Invoke-WebRequest "https://github.com/ULTRA-VAGREE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe" -OutFile $vddInstaller
-    Start-Process -FilePath $vddInstaller -ArgumentList "/S" -Wait
-    Write-Host "VDD installed successfully" -ForegroundColor Green
-} catch {
-    Write-Warning "VDD automated install failed, please install manually"
+    # Download VDD installer
+    Write-Host "Downloading VDD installer..." -ForegroundColor Yellow
+    Invoke-WebRequest "https://github.com/ULTRA-VAGREE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe" -OutFile $vddInstaller -ErrorAction Stop
+    
     if (Test-Path $vddInstaller) {
-        Start-Process -FilePath $vddInstaller
-        Read-Host "Press Enter after manual VDD installation"
+        Write-Host "Installing VDD silently..." -ForegroundColor Yellow
+        
+        # Run silent installation
+        Start-Process -FilePath $vddInstaller -ArgumentList "/S" -Wait
+        Write-Host "VDD installed successfully" -ForegroundColor Green
     }
+} catch {
+    Write-Warning "VDD automated installation failed: $($_.Exception.Message)"
+    Write-Host "Please install VDD manually if needed" -ForegroundColor Yellow
 }
 
-# Update VDD configuration safely
-$vddCfg = Join-Path $PSScriptRoot "configs\vdd_settings.xml"
-$vddDest = "C:\ProgramData\VirtualDisplayDriver\vdd_settings."
+# Copy VDD configuration (just copy, no stopping/restarting)
+Write-Host "Copying VDD configuration..." -ForegroundColor Cyan
+$vddCfg = Join-Path $PSScriptRoot "vdd_settings.xml"
+$vddDestDir = "C:\VirtualDisplayDriver"
+$vddDest = "$vddDestDir\vdd_settings.xml"
 
-function Stop-VDD {
-    $vddProcess = Get-Process -Name "VirtualDisplayDriver" -ErrorAction SilentlyContinue
-    if ($vddProcess) {
-        Write-Host "Stopping VDD process..." -ForegroundColor Yellow
-        Stop-Process -Id $vddProcess.Id -Force
-        Start-Sleep -Seconds 3
+if (Test-Path $vddCfg) {
+    # Create destination directory if it doesn't exist
+    if (-not (Test-Path $vddDestDir)) {
+        New-Item -ItemType Directory -Path $vddDestDir -Force
     }
+    
+    # Copy the configuration file
+    Copy-Item $vddCfg -Destination $vddDest -Force
+    Write-Host "VDD settings copied to: $vddDest" -ForegroundColor Green
+} else {
+    Write-Warning "VDD settings file not found at: $vddCfg"
+    Write-Host "Please ensure vdd_settings.xml exists in the repository root" -ForegroundColor Yellow
 }
 
-function Start-VDD {
-    $vddExe = "C:\Program Files\VirtualDisplayDriver\VirtualDisplayDriver.exe"
-    if (Test-Path $vddExe) {
-        Write-Host "Starting VDD..." -ForegroundColor Yellow
-        Start-Process -FilePath $vddExe
-    } else {
-        Write-Warning "VDD executable not found. Please start manually."
-    }
+# Clean up installer
+if (Test-Path $vddInstaller) {
+    Remove-Item $vddInstaller -Force -ErrorAction SilentlyContinue
 }
-
-Stop-VDD
-Write-Host "Updating VDD configuration..." -ForegroundColor Cyan
-Copy-Item $vddCfg -Destination $vddDest -Force
-Write-Host "VDD settings updated." -ForegroundColor Green
-Start-VDD
 
 # 8. NVIDIA drivers
 Write-Host "Installing NVIDIA drivers..." -ForegroundColor Cyan
