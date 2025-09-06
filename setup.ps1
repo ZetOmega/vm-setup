@@ -43,11 +43,77 @@ try {
 
 # 5. Install Ubisoft Connect
 Write-Host "[5/6] Installing Ubisoft Connect..." -ForegroundColor Cyan
+
+# Method 1: Using winget (recommended - silent install)
 try {
-    winget install --id=Ubisoft.UbisoftConnect --silent --accept-source-agreements --accept-package-agreements
-    Write-Host "Ubisoft Connect installed successfully" -ForegroundColor Green
+    Write-Host "Installing Ubisoft Connect via winget..." -ForegroundColor Yellow
+    winget install --id=Ubisoft.Connect --silent --accept-source-agreements --accept-package-agreements
+    Write-Host "Ubisoft Connect installed successfully via winget" -ForegroundColor Green
 } catch {
-    Write-Warning "Ubisoft Connect installation failed: $($_.Exception.Message)"
+    Write-Warning "Winget installation failed: $($_.Exception.Message)"
+    
+    # Method 2: Direct download and silent install (fallback)
+    Write-Host "Trying direct download method..." -ForegroundColor Yellow
+    $ubisoftUrl = "https://ubistatic3-a.akamaihd.net/orbit/launcher_installer/UbisoftConnectInstaller.exe"
+    $ubisoftInstaller = "$env:TEMP\UbisoftConnectInstaller.exe"
+    
+    try {
+        # Download installer
+        Invoke-WebRequest -Uri $ubisoftUrl -OutFile $ubisoftInstaller -ErrorAction Stop
+        
+        if (Test-Path $ubisoftInstaller) {
+            Write-Host "Running Ubisoft Connect installer silently..." -ForegroundColor Yellow
+            
+            # Silent install parameters
+            $installArgs = "/S"
+            
+            # Install silently
+            $process = Start-Process -FilePath $ubisoftInstaller -ArgumentList $installArgs -Wait -PassThru
+            
+            if ($process.ExitCode -eq 0) {
+                Write-Host "Ubisoft Connect installed successfully" -ForegroundColor Green
+            } else {
+                Write-Warning "Installer exited with code: $($process.ExitCode)"
+                
+                # Try alternative silent method
+                Write-Host "Trying alternative installation method..." -ForegroundColor Yellow
+                Start-Process -FilePath $ubisoftInstaller -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
+                
+                # Verify installation
+                if (Test-Path "${env:ProgramFiles(x86)}\Ubisoft\Ubisoft Game Launcher\upc.exe") {
+                    Write-Host "Ubisoft Connect installed successfully" -ForegroundColor Green
+                } else {
+                    Write-Warning "Ubisoft Connect installation may have failed"
+                }
+            }
+            
+            # Cleanup installer
+            Remove-Item $ubisoftInstaller -Force -ErrorAction SilentlyContinue
+        }
+    } catch {
+        Write-Warning "Direct download installation also failed: $($_.Exception.Message)"
+        Write-Host "Please install Ubisoft Connect manually from: https://ubisoftconnect.com" -ForegroundColor Yellow
+    }
+}
+
+# Verify installation
+$ubisoftPaths = @(
+    "${env:ProgramFiles(x86)}\Ubisoft\Ubisoft Game Launcher",
+    "${env:ProgramFiles}\Ubisoft\Ubisoft Game Launcher",
+    "$env:LOCALAPPDATA\Ubisoft Game Launcher"
+)
+
+$isInstalled = $false
+foreach ($path in $ubisoftPaths) {
+    if (Test-Path $path) {
+        $isInstalled = $true
+        Write-Host "Ubisoft Connect found at: $path" -ForegroundColor Green
+        break
+    }
+}
+
+if (-not $isInstalled) {
+    Write-Warning "Ubisoft Connect installation verification failed"
 }
 
 # 6. Install Tailscale
