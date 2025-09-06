@@ -1,23 +1,25 @@
-# bootstrap.ps1
+# Bootstrap.ps1
 $logFile = "$env:USERPROFILE\Downloads\vm_bootstrap_log.txt"
 Start-Transcript -Path $logFile -Append
 
-Write-Host "=== VM Setup Bootstrap ==="
+Write-Host "=== Starting VM Setup Bootstrap ==="
 
-# Ask for sensitive info once
+# Collect sensitive info once
 $env:TAILSCALE_KEY = Read-Host "Enter your Tailscale Auth Key (kept secret)"
 $env:VM_HOSTNAME = Read-Host "Enter hostname for this VM (used for Tailscale)"
 
-# Ensure temp folder exists
-$tempDir = "$env:TEMP\vm-setup"
-if (-not (Test-Path $tempDir)) { New-Item -ItemType Directory -Path $tempDir }
+# Temp folder for full repo
+$tempDir = Join-Path $env:TEMP "vm-setup"
 
-# Download setup.ps1 if missing
-$setupScript = Join-Path $tempDir "setup.ps1"
-Invoke-WebRequest "https://raw.githubusercontent.com/ZetOmega/vm-setup/main/setup.ps1" -OutFile $setupScript
+# Remove if exists (force fresh clone)
+if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
 
-# Run setup.ps1
-Write-Host "Running setup..."
-& $setupScript
+# Clone repo (requires Git)
+git clone https://github.com/ZetOmega/vm-setup.git $tempDir
+
+# Run setup from cloned repo
+Write-Host "Running setup.ps1 from vm-setup..."
+& "$tempDir\setup.ps1"
 
 Stop-Transcript
+Write-Host "=== Bootstrap Complete ==="
