@@ -90,34 +90,61 @@ try {
     Write-Warning "Tailscale installation failed: $($_.Exception.Message)"
 }
 
-# 7. Install VDD
-Write-Host "[7/6] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
+# 7. Install VDD Automatically
+Write-Host "[7/6] Installing Virtual Display Driver (VDD) Automatically..." -ForegroundColor Cyan
 $vddInstaller = "$env:TEMP\Virtual.Display.Driver-v24.12.24-setup-x64.exe"
+$vddInstallArgs = "/S"  # Silent install parameter
 
 try {
+    # Download VDD installer
+    Write-Host "Downloading VDD installer..." -ForegroundColor Yellow
     Invoke-WebRequest "https://github.com/ULTRA-VAGUE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe" -OutFile $vddInstaller -ErrorAction Stop
     
     if (Test-Path $vddInstaller) {
-        Write-Host "Launching VDD installer. Please click through manually..." -ForegroundColor Yellow
-        $process = Start-Process -FilePath $vddInstaller -PassThru
-        Write-Host "Waiting for VDD installer to finish..." -ForegroundColor Yellow
-        $process.WaitForExit()
+        Write-Host "Installing VDD silently..." -ForegroundColor Yellow
         
-        # Copy VDD config
-        $vddCfg = Join-Path $PSScriptRoot "configs\vdd-settings.xml"
-        if (Test-Path $vddCfg) {
-            $destinationDir = "C:\ProgramData\VirtualDisplayDriver"
-            if (-not (Test-Path $destinationDir)) {
-                New-Item -ItemType Directory -Path $destinationDir -Force
+        # Run silent installation
+        $process = Start-Process -FilePath $vddInstaller -ArgumentList $vddInstallArgs -Wait -PassThru
+        
+        if ($process.ExitCode -eq 0) {
+            Write-Host "VDD installed successfully" -ForegroundColor Green
+            
+            # Copy VDD config
+            $vddCfg = Join-Path $PSScriptRoot "configs\vdd-settings.xml"
+            if (Test-Path $vddCfg) {
+                $destinationDir = "C:\ProgramData\VirtualDisplayDriver"
+                if (-not (Test-Path $destinationDir)) {
+                    New-Item -ItemType Directory -Path $destinationDir -Force
+                }
+                Copy-Item $vddCfg -Destination "$destinationDir\vdd-settings.xml" -Force
+                Write-Host "VDD settings copied." -ForegroundColor Green
+            } else {
+                Write-Warning "VDD settings file not found at: $vddCfg"
             }
-            Copy-Item $vddCfg -Destination "$destinationDir\vdd-settings.xml" -Force
-            Write-Host "VDD settings copied." -ForegroundColor Green
         } else {
-            Write-Warning "VDD settings file not found at: $vddCfg"
+            Write-Warning "VDD installation failed with exit code: $($process.ExitCode)"
+            Write-Host "Attempting manual installation method..." -ForegroundColor Yellow
+            
+            # Fallback to manual installation
+            Write-Host "Please complete the VDD installation manually. Press Enter when finished..." -ForegroundColor Yellow
+            Start-Process -FilePath $vddInstaller
+            Read-Host "Press Enter after VDD installation is complete"
         }
     }
 } catch {
     Write-Warning "VDD installation failed: $($_.Exception.Message)"
+    
+    # Check if VDD is already installed
+    if (Test-Path "C:\ProgramData\VirtualDisplayDriver") {
+        Write-Host "VDD appears to be already installed" -ForegroundColor Green
+    } else {
+        Write-Warning "VDD installation completely failed. Please install manually."
+    }
+}
+
+# Clean up installer
+if (Test-Path $vddInstaller) {
+    Remove-Item $vddInstaller -Force -ErrorAction SilentlyContinue
 }
 
 # 8. NVIDIA drivers
