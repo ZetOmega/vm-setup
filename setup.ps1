@@ -141,8 +141,8 @@ try {
 }
 
 # Update VDD configuration safely
-$vddCfg = Join-Path $PSScriptRoot "configs\vdd-settings.xml"
-$vddDest = "C:\ProgramData\VirtualDisplayDriver\vdd-settings.xml"
+$vddCfg = Join-Path $PSScriptRoot "configs\vdd_settings.xml"
+$vddDest = "C:\ProgramData\VirtualDisplayDriver\vdd_settings."
 
 function Stop-VDD {
     $vddProcess = Get-Process -Name "VirtualDisplayDriver" -ErrorAction SilentlyContinue
