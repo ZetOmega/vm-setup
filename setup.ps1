@@ -175,6 +175,10 @@ try {
         Start-Process -FilePath $vddInstaller
         Read-Host "Press Enter after manual VDD installation"
     }
+    # Copy config
+    $vddCfg = Join-Path $PSScriptRoot "configs\vdd-settings.xml"
+    Copy-Item $vddCfg -Destination "C:\ProgramData\VirtualDisplayDriver\vdd-settings.xml" -Force
+    Write-Host "VDD settings configured" -ForegroundColor Green
 }
 
 # 8. NVIDIA drivers
