@@ -3,6 +3,6 @@
 3. input wanted machine name
 4. manually click through vdd installer
 5. refresh vdd settings file
-6. open sunshine and login, sunshine:sunshine
+6. open sunshine and set a password
 
 You are ready to log into your game launchers and play away
