@@ -10,7 +10,7 @@ $installUbisoft = [bool]($env:INSTALL_UBISOFT -eq "True")
 $installNvidia = [bool]($env:INSTALL_NVIDIA -eq "True")
 
 # 1. Install Visual C++ Redistributable x64 only (always install)
-Write-Host "[1/6] Installing Visual C++ Redistributables..." -ForegroundColor Cyan
+Write-Host "[1/7] Installing Visual C++ Redistributables..." -ForegroundColor Cyan
 $vc64 = "Microsoft.VCRedist.2015+.x64"
 try {
     winget install --id=$vc64 --silent --accept-source-agreements --accept-package-agreements
@@ -19,9 +19,20 @@ try {
     Write-Warning "Visual C++ installation failed: $($_.Exception.Message)"
 }
 
-# 2. Install Sunshine if selected
+# 2. Install Media Feature Pack (always install for Windows Server/Windows N editions)
+Write-Host "[2/7] Installing Media Feature Pack..." -ForegroundColor Cyan
+try {
+    dism /online /enable-feature /featurename:MediaPlayback /all /quiet /norestart
+    dism /online /enable-feature /featurename:DirectPlay /all /quiet /norestart
+    dism /online /enable-feature /featurename:LegacyComponents /all /quiet /norestart
+    Write-Host "Media Feature Pack installed successfully" -ForegroundColor Green
+} catch {
+    Write-Warning "Media Feature Pack installation failed: $($_.Exception.Message)"
+}
+
+# 3. Install Sunshine if selected
 if ($installSunshine) {
-    Write-Host "[2/6] Installing Sunshine..." -ForegroundColor Cyan
+    Write-Host "[3/7] Installing Sunshine..." -ForegroundColor Cyan
     try {
         winget install --id=LizardByte.Sunshine --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Sunshine installed successfully" -ForegroundColor Green
@@ -30,9 +41,9 @@ if ($installSunshine) {
     }
 }
 
-# 3. Install Steam if selected
+# 4. Install Steam if selected
 if ($installSteam) {
-    Write-Host "[3/6] Installing Steam..." -ForegroundColor Cyan
+    Write-Host "[4/7] Installing Steam..." -ForegroundColor Cyan
     try {
         winget install --id=Valve.Steam --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Steam installed successfully" -ForegroundColor Green
@@ -41,9 +52,9 @@ if ($installSteam) {
     }
 }
 
-# 4. Install Epic Games Launcher if selected
+# 5. Install Epic Games Launcher if selected
 if ($installEpic) {
-    Write-Host "[4/6] Installing Epic Games Launcher..." -ForegroundColor Cyan
+    Write-Host "[5/7] Installing Epic Games Launcher..." -ForegroundColor Cyan
     try {
         winget install --id=EpicGames.EpicGamesLauncher --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Epic Games Launcher installed successfully" -ForegroundColor Green
@@ -52,9 +63,9 @@ if ($installEpic) {
     }
 }
 
-# 5. Install Ubisoft Connect if selected
+# 6. Install Ubisoft Connect if selected
 if ($installUbisoft) {
-    Write-Host "[5/6] Installing Ubisoft Connect..." -ForegroundColor Cyan
+    Write-Host "[6/7] Installing Ubisoft Connect..." -ForegroundColor Cyan
     try {
         winget install --id=Ubisoft.Connect --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Ubisoft Connect installed successfully" -ForegroundColor Green
@@ -63,9 +74,9 @@ if ($installUbisoft) {
     }
 }
 
-# 6. Install Tailscale if Sunshine is selected
+# 7. Install Tailscale if Sunshine is selected
 if ($installSunshine) {
-    Write-Host "[6/6] Installing Tailscale..." -ForegroundColor Cyan
+    Write-Host "[7/7] Installing Tailscale..." -ForegroundColor Cyan
     $tailscaleUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe"
     $tailscaleInstaller = "$env:TEMP\tailscale-setup.exe"
     try {
@@ -92,9 +103,9 @@ if ($installSunshine) {
     }
 }
 
-# 7. Install VDD if Sunshine is selected
+# 8. Install VDD if Sunshine is selected
 if ($installSunshine) {
-    Write-Host "[7/6] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
+    Write-Host "[8/7] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
     $vddInstaller = "$env:TEMP\VirtualDisplayDriverSetup.exe"
 
     try {
@@ -143,9 +154,9 @@ if ($installSunshine) {
     Write-Host "VDD setup completed!" -ForegroundColor Green
 }
 
-# 8. Install Parsec if selected
+# 9. Install Parsec if selected
 if ($installParsec) {
-    Write-Host "[8/6] Installing Parsec..." -ForegroundColor Cyan
+    Write-Host "[9/7] Installing Parsec..." -ForegroundColor Cyan
     try {
         winget install --id=Parsec.Parsec --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Parsec installed successfully" -ForegroundColor Green
@@ -154,7 +165,7 @@ if ($installParsec) {
     }
 }
 
-# 9. NVIDIA drivers if selected
+# 10. NVIDIA drivers if selected
 if ($installNvidia) {
     Write-Host "Installing NVIDIA drivers..." -ForegroundColor Cyan
     if (Test-Path "$PSScriptRoot\nvidia.ps1") {
