@@ -64,6 +64,9 @@ if ($streamingChoice -eq 1 -or $streamingChoice -eq 3) {
     $env:TAILSCALE_KEY = Read-Host "Enter your Tailscale Auth Key"
 }
 
+# Add reboot question
+$env:REBOOT_AFTER_SETUP = if ((Read-Host "Reboot after setup? (y/N)") -eq 'y') { "True" } else { "False" }
+
 # Set hostname
 try {
     Rename-Computer -NewName $hostname -Force -PassThru
