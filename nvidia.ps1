@@ -10,28 +10,94 @@ param (
 $nvidiaTempFolder = "$env:temp\NVIDIA"
 New-Item -Path $nvidiaTempFolder -ItemType Directory -Force | Out-Null
 
-# Checking latest driver version
-Write-Host "Checking for latest NVIDIA driver version..."
+# Function to get NVIDIA GPU information
+function Get-NvidiaGpuInfo {
+    try {
+        # Try to get GPU info using WMI
+        $gpuInfo = Get-WmiObject -Class Win32_VideoController | Where-Object {$_.Name -like "*NVIDIA*"} | Select-Object -First 1
+        
+        if ($null -eq $gpuInfo) {
+            Write-Host "No NVIDIA GPU detected via WMI. Trying alternative method..." -ForegroundColor Yellow
+            
+            # Alternative method using device manager info
+            $deviceInfo = Get-PnpDevice -Class Display | Where-Object {$_.FriendlyName -like "*NVIDIA*"} | Select-Object -First 1
+            if ($null -ne $deviceInfo) {
+                return @{
+                    Name = $deviceInfo.FriendlyName
+                    # Extract device ID from hardware ID
+                    DeviceId = ($deviceInfo.InstanceId -split "\\")[1] -replace "&.*", ""
+                }
+            }
+            
+            throw "No NVIDIA GPU found in the system"
+        }
+        
+        # Extract device ID from PNPDeviceID
+        $deviceId = ($gpuInfo.PNPDeviceID -split "\\")[1] -replace "&.*", ""
+        
+        return @{
+            Name = $gpuInfo.Name
+            DeviceId = $deviceId
+        }
+    }
+    catch {
+        Write-Error "Failed to detect NVIDIA GPU: $($_.Exception.Message)"
+        exit 1
+    }
+}
+
+# Get GPU information
+Write-Host "Detecting NVIDIA GPU..." -ForegroundColor Yellow
+$gpuInfo = Get-NvidiaGpuInfo
+Write-Host "Detected GPU: $($gpuInfo.Name)" -ForegroundColor Green
+Write-Host "Device ID: $($gpuInfo.DeviceId)" -ForegroundColor Green
+
+# Checking latest driver version for this specific GPU
+Write-Host "Checking for latest NVIDIA driver version for your GPU..."
 $uri = 'https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php' +
 '?func=DriverManualLookup' +
-'&psid=120' +
-'&pfid=929' +
+'&psid=120' +  # GeForce
+'&pfid=929' +  # Windows 10/11 64-bit
 '&osID=57' +
 '&languageCode=1033' +
 '&isWHQL=1' +
 '&dch=1' +
 '&sort1=0' +
-'&numberOfResults=1'
+'&numberOfResults=1' +
+"&gpu=$($gpuInfo.DeviceId)"
 
 try {
     $response = Invoke-WebRequest -Uri $uri -Method GET -UseBasicParsing
     $payload = $response.Content | ConvertFrom-Json
     $version = $payload.IDS[0].downloadInfo.Version
-    Write-Host "Latest version: $version" -ForegroundColor Green
+    Write-Host "Latest version for your GPU: $version" -ForegroundColor Green
 }
 catch {
     Write-Error "Failed to get latest driver version: $($_.Exception.Message)"
-    exit 1
+    Write-Host "Falling back to generic driver..." -ForegroundColor Yellow
+    
+    # Fallback to generic driver lookup
+    $uri = 'https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php' +
+    '?func=DriverManualLookup' +
+    '&psid=120' +
+    '&pfid=929' +
+    '&osID=57' +
+    '&languageCode=1033' +
+    '&isWHQL=1' +
+    '&dch=1' +
+    '&sort1=0' +
+    '&numberOfResults=1'
+    
+    try {
+        $response = Invoke-WebRequest -Uri $uri -Method GET -UseBasicParsing
+        $payload = $response.Content | ConvertFrom-Json
+        $version = $payload.IDS[0].downloadInfo.Version
+        Write-Host "Latest generic driver version: $version" -ForegroundColor Green
+    }
+    catch {
+        Write-Error "Failed to get generic driver version: $($_.Exception.Message)"
+        exit 1
+    }
 }
 
 # Generating download link
