@@ -20,9 +20,6 @@ try {
     Write-Warning "Sunshine installation failed: $($_.Exception.Message)"
 }
 
-# Configure Sunshine password (placeholder)
-Write-Host "Sunshine password set to: $env:SUNSHINE_PASSWORD" -ForegroundColor Yellow
-
 # 3. Install Steam
 Write-Host "[3/6] Installing Steam..." -ForegroundColor Cyan
 try {
