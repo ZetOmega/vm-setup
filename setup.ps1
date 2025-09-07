@@ -127,29 +127,28 @@ try {
 
 # 7. Install VDD with Manual Completion
 Write-Host "[7/6] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
-$vddInstaller = "$env:TEMP\Virtual.Display.Driver-v24.12.24-setup-x64.exe"
+$vddInstaller = "$env:TEMP\VirtualDisplayDriverSetup.exe"
 
 try {
     # Download VDD installer
     Write-Host "Downloading VDD installer..." -ForegroundColor Yellow
-    Invoke-WebRequest "https://github.com/ULTRA-VAGREE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe" -OutFile $vddInstaller -ErrorAction Stop
+    $vddUrl = "https://github.com/ULTRA-VAGUE/Virtual-Display-Driver-Compatibility-Fork/releases/download/v24.12.24/Virtual.Display.Driver-v24.12.24-setup-x64.exe"
+    Invoke-WebRequest -Uri $vddUrl -OutFile $vddInstaller -ErrorAction Stop
     
     if (Test-Path $vddInstaller) {
         Write-Host "Opening VDD installer for manual installation..." -ForegroundColor Yellow
-        Write-Host "Please complete the VDD installation manually in the opened window" -ForegroundColor Yellow
-        Write-Host "After installation is complete, return here and press Enter" -ForegroundColor Yellow
+        Write-Host "Please complete the VDD installation in the window that opens" -ForegroundColor Yellow
         
-        # Open the installer
-        $installProcess = Start-Process -FilePath $vddInstaller -PassThru
+        # Run the installer
+        Start-Process -FilePath $vddInstaller
         
-        # Wait for user confirmation after manual installation
-        Read-Host "Press Enter after you have completed the VDD installation"
+        Write-Host "Press any key after you have completed the VDD installation..." -ForegroundColor Green
+        $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | Out-Null
         
-        Write-Host "VDD installation completed manually" -ForegroundColor Green
+        Write-Host "VDD installation completed" -ForegroundColor Green
     }
 } catch {
     Write-Warning "VDD download failed: $($_.Exception.Message)"
-    Write-Host "Please download and install VDD manually from: https://github.com/ULTRA-VAGREE/Virtual-Display-Driver-Compatibility-Fork/releases" -ForegroundColor Yellow
 }
 
 # Copy VDD configuration after manual installation
@@ -159,54 +158,21 @@ $vddDestDir = "C:\VirtualDisplayDriver"
 $vddDest = "$vddDestDir\vdd_settings.xml"
 
 if (Test-Path $vddCfg) {
-    # Create destination directory if it doesn't exist
     if (-not (Test-Path $vddDestDir)) {
         New-Item -ItemType Directory -Path $vddDestDir -Force
     }
-    
-    # Copy the configuration file
     Copy-Item $vddCfg -Destination $vddDest -Force
     Write-Host "VDD settings copied to: $vddDest" -ForegroundColor Green
-    
-    # Verify the copy was successful
-    if (Test-Path $vddDest) {
-        Write-Host "VDD configuration verified successfully" -ForegroundColor Green
-    } else {
-        Write-Warning "VDD configuration copy may have failed"
-    }
 } else {
     Write-Warning "VDD settings file not found at: $vddCfg"
-    Write-Host "Please ensure vdd_settings.xml exists in the repository root" -ForegroundColor Yellow
-    
-    # Check common alternative locations
-    $alternativePaths = @(
-        Join-Path $PSScriptRoot "configs\vdd_settings.xml",
-        Join-Path $PSScriptRoot "..\vdd_settings.xml",
-        Join-Path $PSScriptRoot "vdd_settings.xml"
-    )
-    
-    foreach ($altPath in $alternativePaths) {
-        if (Test-Path $altPath) {
-            Write-Host "Found VDD settings at alternative location: $altPath" -ForegroundColor Yellow
-            if (-not (Test-Path $vddDestDir)) {
-                New-Item -ItemType Directory -Path $vddDestDir -Force
-            }
-            Copy-Item $altPath -Destination $vddDest -Force
-            Write-Host "VDD settings copied from alternative location" -ForegroundColor Green
-            break
-        }
-    }
 }
 
 # Clean up installer
 if (Test-Path $vddInstaller) {
     Remove-Item $vddInstaller -Force -ErrorAction SilentlyContinue
-    Write-Host "Installer cleaned up" -ForegroundColor Green
 }
 
-# Final confirmation
 Write-Host "VDD setup completed!" -ForegroundColor Green
-Write-Host "Configuration file: C:\VirtualDisplayDriver\vdd_settings.xml" -ForegroundColor Cyan
 
 # 8. NVIDIA drivers
 Write-Host "Installing NVIDIA drivers..." -ForegroundColor Cyan
