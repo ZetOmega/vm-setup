@@ -1,116 +1,100 @@
-# setup.ps1 - Modular installation functions
+# setup.ps1
+Write-Host "=== Starting Full VM Setup ==="
 
-# Install Visual C++ Redistributable
-function Install-VCRedist {
-    Write-Host "[1] Installing Visual C++ Redistributables..." -ForegroundColor Cyan
-    $vc64 = "Microsoft.VCRedist.2015+.x64"
-    try {
-        winget install --id=$vc64 --silent --accept-source-agreements --accept-package-agreements
-        Write-Host "Visual C++ installed successfully" -ForegroundColor Green
-        return $true
-    } 
-    catch {
-        Write-Warning "Visual C++ installation failed: $($_.Exception.Message)"
-        return $false
-    }
+# Set default values if environment variables are not set
+$installSunshine = [bool]($env:INSTALL_SUNSHINE -eq "True")
+$installParsec = [bool]($env:INSTALL_PARSEC -eq "True")
+$installSteam = [bool]($env:INSTALL_STEAM -eq "True")
+$installEpic = [bool]($env:INSTALL_EPIC -eq "True")
+$installUbisoft = [bool]($env:INSTALL_UBISOFT -eq "True")
+$installNvidia = [bool]($env:INSTALL_NVIDIA -eq "True")
+
+# 1. Install Visual C++ Redistributable x64 only (always install)
+Write-Host "[1/6] Installing Visual C++ Redistributables..." -ForegroundColor Cyan
+$vc64 = "Microsoft.VCRedist.2015+.x64"
+try {
+    winget install --id=$vc64 --silent --accept-source-agreements --accept-package-agreements
+    Write-Host "Visual C++ installed successfully" -ForegroundColor Green
+} catch {
+    Write-Warning "Visual C++ installation failed: $($_.Exception.Message)"
 }
 
-# Install Sunshine
-function Install-Sunshine {
-    Write-Host "[2] Installing Sunshine..." -ForegroundColor Cyan
+# 2. Install Sunshine if selected
+if ($installSunshine) {
+    Write-Host "[2/6] Installing Sunshine..." -ForegroundColor Cyan
     try {
         winget install --id=LizardByte.Sunshine --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Sunshine installed successfully" -ForegroundColor Green
-        return $true
-    } 
-    catch {
+    } catch {
         Write-Warning "Sunshine installation failed: $($_.Exception.Message)"
-        return $false
     }
 }
 
-# Install Steam
-function Install-Steam {
-    Write-Host "[3] Installing Steam..." -ForegroundColor Cyan
+# 3. Install Steam if selected
+if ($installSteam) {
+    Write-Host "[3/6] Installing Steam..." -ForegroundColor Cyan
     try {
         winget install --id=Valve.Steam --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Steam installed successfully" -ForegroundColor Green
-        return $true
-    } 
-    catch {
+    } catch {
         Write-Warning "Steam installation failed: $($_.Exception.Message)"
-        return $false
     }
 }
 
-# Install Epic Games Launcher
-function Install-Epic {
-    Write-Host "[4] Installing Epic Games Launcher..." -ForegroundColor Cyan
+# 4. Install Epic Games Launcher if selected
+if ($installEpic) {
+    Write-Host "[4/6] Installing Epic Games Launcher..." -ForegroundColor Cyan
     try {
         winget install --id=EpicGames.EpicGamesLauncher --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Epic Games Launcher installed successfully" -ForegroundColor Green
-        return $true
-    } 
-    catch {
+    } catch {
         Write-Warning "Epic Games Launcher installation failed: $($_.Exception.Message)"
-        return $false
     }
 }
 
-# Install Ubisoft Connect
-function Install-Ubisoft {
-    Write-Host "[5] Installing Ubisoft Connect..." -ForegroundColor Cyan
+# 5. Install Ubisoft Connect if selected
+if ($installUbisoft) {
+    Write-Host "[5/6] Installing Ubisoft Connect..." -ForegroundColor Cyan
     try {
         winget install --id=Ubisoft.Connect --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Ubisoft Connect installed successfully" -ForegroundColor Green
-        return $true
-    } 
-    catch {
+    } catch {
         Write-Warning "Ubisoft Connect installation failed: $($_.Exception.Message)"
-        return $false
     }
 }
 
-# Install Tailscale
-function Install-Tailscale {
-    Write-Host "[6] Installing Tailscale..." -ForegroundColor Cyan
+# 6. Install Tailscale if Sunshine is selected
+if ($installSunshine) {
+    Write-Host "[6/6] Installing Tailscale..." -ForegroundColor Cyan
     $tailscaleUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe"
     $tailscaleInstaller = "$env:TEMP\tailscale-setup.exe"
-    
     try {
         Invoke-WebRequest $tailscaleUrl -OutFile $tailscaleInstaller -ErrorAction Stop
         if (Test-Path $tailscaleInstaller) {
             Write-Host "Starting Tailscale installation..." -ForegroundColor Yellow
             Start-Process -FilePath $tailscaleInstaller -ArgumentList "/S" -Wait
             Start-Sleep -Seconds 10
-            
             $tailscalePaths = @(
                 "C:\Program Files\Tailscale\tailscale.exe",
                 "C:\Program Files (x86)\Tailscale IPN\tailscale.exe"
             )
             $tailscaleExe = $tailscalePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
-            
             if ($tailscaleExe) {
                 Write-Host "Configuring Tailscale with auth key..." -ForegroundColor Yellow
                 Start-Process -FilePath $tailscaleExe -ArgumentList "up", "--authkey", "$env:TAILSCALE_KEY", "--reset" -Wait
                 Write-Host "Tailscale configured successfully" -ForegroundColor Green
-                return $true
-            } 
-            else {
+            } else {
                 Write-Warning "Tailscale executable not found. Please configure manually."
-                return $false
             }
         }
-    } 
-    catch {
+    } catch {
         Write-Warning "Tailscale installation failed: $($_.Exception.Message)"
-        return $false
     }
 }
 
-# Install VDD
-function Install-VDD {
-    Write-Host "[7] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
+# 7. Install VDD if Sunshine is selected
+if ($installSunshine) {
+    Write-Host "[7/6] Installing Virtual Display Driver (VDD)..." -ForegroundColor Cyan
     $vddInstaller = "$env:TEMP\VirtualDisplayDriverSetup.exe"
 
     try {
@@ -131,10 +115,8 @@ function Install-VDD {
             
             Write-Host "VDD installation completed" -ForegroundColor Green
         }
-    } 
-    catch {
+    } catch {
         Write-Warning "VDD download failed: $($_.Exception.Message)"
-        return $false
     }
 
     # Copy VDD configuration after manual installation
@@ -149,38 +131,37 @@ function Install-VDD {
         }
         Copy-Item $vddCfg -Destination $vddDest -Force
         Write-Host "VDD settings copied to: $vddDest" -ForegroundColor Green
-    } 
-    else {
+    } else {
         Write-Warning "VDD settings file not found at: $vddCfg"
     }
 
+    # Clean up installer
+    if (Test-Path $vddInstaller) {
+        Remove-Item $vddInstaller -Force -ErrorAction SilentlyContinue
+    }
 
-# Install Parsec
-function Install-Parsec {
-    Write-Host "[8] Installing Parsec..." -ForegroundColor Cyan
+    Write-Host "VDD setup completed!" -ForegroundColor Green
+}
+
+# 8. Install Parsec if selected
+if ($installParsec) {
+    Write-Host "[8/6] Installing Parsec..." -ForegroundColor Cyan
     try {
         winget install --id=Parsec.Parsec --silent --accept-source-agreements --accept-package-agreements
         Write-Host "Parsec installed successfully" -ForegroundColor Green
-        return $true
-    } 
-    catch {
+    } catch {
         Write-Warning "Parsec installation failed: $($_.Exception.Message)"
-        return $false
     }
 }
 
-# Install NVIDIA drivers
-function Install-NvidiaDrivers {
-    Write-Host "[9] Installing NVIDIA drivers..." -ForegroundColor Cyan
+# 9. NVIDIA drivers if selected
+if ($installNvidia) {
+    Write-Host "Installing NVIDIA drivers..." -ForegroundColor Cyan
     if (Test-Path "$PSScriptRoot\nvidia.ps1") {
         & "$PSScriptRoot\nvidia.ps1"
-        return $true
-    } 
-    else {
+    } else {
         Write-Warning "nvidia.ps1 not found. Skipping NVIDIA driver installation."
-        return $false
     }
 }
 
-# Export functions so they can be called from bootstrap
-Export-ModuleMember -Function *
+Write-Host "=== VM Setup Complete! Reboot recommended. ===" -ForegroundColor Green
