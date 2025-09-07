@@ -159,9 +159,51 @@ if ($installNvidia) {
     Write-Host "Installing NVIDIA drivers..." -ForegroundColor Cyan
     if (Test-Path "$PSScriptRoot\nvidia.ps1") {
         & "$PSScriptRoot\nvidia.ps1"
+        
+        # Configure displays for Sunshine (simple version)
+        if ($installSunshine) {
+            Write-Host "Configuring displays for Sunshine HEVC support..." -ForegroundColor Cyan
+            
+            $multiMonitorToolUrl = "https://www.nirsoft.net/utils/multimonitortool-x64.zip"
+            $toolsDir = "$env:TEMP\vm-setup-tools"
+            $zipPath = "$toolsDir\multimonitortool.zip"
+            $extractPath = "$toolsDir\multimonitortool"
+            $exePath = "$extractPath\MultiMonitorTool.exe"
+            
+            try {
+                # Create tools directory
+                New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
+                
+                # Download and extract MultiMonitorTool
+                Invoke-WebRequest -Uri $multiMonitorToolUrl -OutFile $zipPath
+                Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+                
+                if (Test-Path $exePath) {
+                    # Set Display 2 as primary and disable Display 1 (exactly as requested)
+                    Write-Host "Setting Display 2 as primary..." -ForegroundColor Yellow
+                    & $exePath /SetPrimary 2
+                    
+                    Start-Sleep -Seconds 2
+                    
+                    Write-Host "Disabling Display 1..." -ForegroundColor Yellow
+                    & $exePath /disable 1
+                    
+                    Write-Host "Display configuration completed!" -ForegroundColor Green
+                }
+            }
+            catch {
+                Write-Warning "MultiMonitorTool configuration failed: $($_.Exception.Message)"
+            }
+        }
     } else {
         Write-Warning "nvidia.ps1 not found. Skipping NVIDIA driver installation."
     }
 }
 
-Write-Host "=== VM Setup Complete! Reboot recommended. ===" -ForegroundColor Green
+# Reboot if requested
+if ($env:REBOOT_AFTER_SETUP -eq "True") {
+    Write-Host "Rebooting system..." -ForegroundColor Cyan
+    Restart-Computer -Force
+}
+
+Write-Host "=== VM Setup Complete! ===" -ForegroundColor Green
