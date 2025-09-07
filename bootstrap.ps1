@@ -48,22 +48,18 @@ function Show-Menu {
     }
 }
 
-# Main menu - Streaming solution
+# Collect user choices
 $streamingOptions = @("Sunshine (with Tailscale and VDD)", "Parsec", "Both", "None")
 $streamingChoice = Show-Menu -Title "Select streaming solution:" -Options $streamingOptions
 
-# Game launchers menu
 $launcherOptions = @("Steam", "Epic Games Launcher", "Ubisoft Connect")
 $launcherChoices = Show-Menu -Title "Select game launchers to install:" -Options $launcherOptions -AllowMultiple $true
 
-# NVIDIA drivers
 $driverChoice = Read-Host "`nDo you want to install NVIDIA drivers? (y/N)"
 $installDrivers = ($driverChoice -eq 'y' -or $driverChoice -eq 'Y')
 
-# Hostname
 $hostname = Read-Host "`nEnter hostname for this VM"
 
-# Tailscale key if needed
 if ($streamingChoice -eq 1 -or $streamingChoice -eq 3) {
     $env:TAILSCALE_KEY = Read-Host "Enter your Tailscale Auth Key"
 }
@@ -114,46 +110,22 @@ catch {
 # Setup folder
 $setupFolder = Join-Path $tempDir "vm-setup-main"
 
-# Import setup functions
-. (Join-Path $setupFolder "setup.ps1")
+# Set environment variables for the setup script
+$env:INSTALL_SUNSHINE = ($streamingChoice -eq 1 -or $streamingChoice -eq 3)
+$env:INSTALL_PARSEC = ($streamingChoice -eq 2 -or $streamingChoice -eq 3)
+$env:INSTALL_STEAM = ($launcherChoices -contains 1)
+$env:INSTALL_EPIC = ($launcherChoices -contains 2)
+$env:INSTALL_UBISOFT = ($launcherChoices -contains 3)
+$env:INSTALL_NVIDIA = $installDrivers
 
-# Execute selected installations
+# Call setup.ps1
 Write-Host "`n=== Starting Installation Process ===" -ForegroundColor Green
-
-# Install streaming solutions
-switch ($streamingChoice) {
-    1 { 
-        Write-Host "Installing Sunshine with Tailscale and VDD..." -ForegroundColor Cyan
-        Install-Sunshine
-        Install-Tailscale
-        Install-VDD 
-    }
-    2 { 
-        Write-Host "Installing Parsec..." -ForegroundColor Cyan
-        Install-Parsec 
-    }
-    3 { 
-        Write-Host "Installing both Sunshine and Parsec..." -ForegroundColor Cyan
-        Install-Sunshine
-        Install-Tailscale
-        Install-VDD
-        Install-Parsec
-    }
+if (Test-Path "$setupFolder\setup.ps1") {
+    & "$setupFolder\setup.ps1"
 }
-
-# Install selected game launchers
-if ($launcherChoices.Count -gt 0) {
-    Write-Host "Installing selected game launchers..." -ForegroundColor Cyan
-    
-    if ($launcherChoices -contains 1) { Install-Steam }
-    if ($launcherChoices -contains 2) { Install-Epic }
-    if ($launcherChoices -contains 3) { Install-Ubisoft }
-}
-
-# Install NVIDIA drivers if requested
-if ($installDrivers) {
-    Write-Host "Installing NVIDIA drivers..." -ForegroundColor Cyan
-    Install-NvidiaDrivers
+else {
+    Write-Error "setup.ps1 not found in extracted files"
+    exit 1
 }
 
 Write-Host "`n=== Setup Complete! ===" -ForegroundColor Green
